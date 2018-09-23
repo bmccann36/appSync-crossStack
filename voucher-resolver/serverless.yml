@@ -1,0 +1,21 @@
+
+
+service: voucher-resolver
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+
+# you can overwrite defaults here
+functions:
+  voucherResolver:
+    handler: handler.handler
+
+resources:
+  Outputs:
+    VoucherResolverUnqualifiedArn:
+      Value:
+        'Fn::GetAtt': [ VoucherResolverLambdaFunction, Arn ]
+      Export:
+        Name: 'voucher-resolver-arn'
+

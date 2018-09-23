@@ -1,0 +1,18 @@
+
+
+service: appSync-stack
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  variableSyntax: '\${((ssm:|cf:|env:|self:|opt:|file\()[ ~a-zA-Z0-9._,:\-\/\(\)]+)}'
+# you can overwrite defaults here
+  stage: dev
+  region: us-east-1
+
+# you can add CloudFormation resource templates here
+resources:
+  - ${file(./infrastructure/appSyncApi.yml)}
+  - ${file(./infrastructure/permissions.yml)}
+  - ${file(./infrastructure/ROOTresolvers.yml)}
+  - ${file(./infrastructure/NESTEDresolvers.yml)}

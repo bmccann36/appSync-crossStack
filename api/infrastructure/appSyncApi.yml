@@ -1,0 +1,28 @@
+Resources:
+  AppSyncApi:
+    Type: "AWS::AppSync::GraphQLApi"
+    Properties:
+      Name: basic-appSync-api
+      AuthenticationType: API_KEY
+      LogConfig:
+        CloudWatchLogsRoleArn: { Fn::GetAtt: [ AppSyncLoggingRole, Arn ] }
+        FieldLogLevel: ALL
+
+  AppSyncSchema:
+    Type: "AWS::AppSync::GraphQLSchema"
+    Properties:
+      Definition: ${file(./schema.graphql)}
+      ApiId: { Fn::GetAtt: 'AppSyncApi.ApiId' }
+  
+
+Outputs:
+  AppSyncUrl:
+    Description: The URL of the AppSync GraphQL API
+    Value:  { Fn::GetAtt: [ AppSyncApi, GraphQLUrl ] }
+    Export:
+      Name: { Fn::Sub: '${AWS::StackName}:AppSyncUrl'}
+  AppSyncId:
+    Description: The ID of the AppSync GraphQL API
+    Value: { Fn::GetAtt: [ AppSyncApi, ApiId ] }
+    Export:
+      Name: { Fn::Sub: '${AWS::StackName}:AppSyncId'}

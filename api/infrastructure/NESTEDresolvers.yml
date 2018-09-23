@@ -1,0 +1,25 @@
+Resources:
+
+# resolves vendor from within Voucher type
+  NESTEDvendorResolver:
+    Type: 'AWS::AppSync::Resolver'
+    Description: 'nested resolver for resolving vendor WITHIN voucher'
+    Properties:
+      TypeName: Voucher # attach to voucher type
+      DataSourceName: NESTEDvendorDataSource
+#  template forwards result of the outer parent graphQL field
+      RequestMappingTemplate: ${file(./mappingTemplates/forward-result-template.txt)}
+      ResponseMappingTemplate: ${file(./mappingTemplates/res-mapping-template.txt)}
+      ApiId: { Fn::GetAtt: 'AppSyncApi.ApiId' }
+      FieldName: "vendor"
+# data source for the above NESTEDvendorResolver
+  NESTEDvendorDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      Type: AWS_LAMBDA
+      ServiceRoleArn: { Fn::GetAtt: [ AppSyncLambdaServiceRole, Arn ] }
+      ApiId: { Fn::GetAtt: [ AppSyncApi, ApiId ] }
+      Name: NESTEDvendorDataSource
+      LambdaConfig:
+        LambdaFunctionArn: 
+          Fn::ImportValue: 'vendor-resolver-arn'

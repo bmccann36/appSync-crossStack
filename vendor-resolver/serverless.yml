@@ -1,0 +1,21 @@
+
+
+service: vendor-resolver
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+
+# you can overwrite defaults here
+functions:
+  vendorResolver:
+    handler: handler.handler
+
+resources:
+  Outputs:
+    VendorResolverUnqualifiedArn:
+      Value:
+        'Fn::GetAtt': [ VendorResolverLambdaFunction, Arn ]
+      Export:
+        Name: 'vendor-resolver-arn'
+

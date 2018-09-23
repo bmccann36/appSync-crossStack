@@ -1,0 +1,231 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket"
+    },
+    "AppSyncApi": {
+      "Type": "AWS::AppSync::GraphQLApi",
+      "Properties": {
+        "Name": "basic-appSync-api",
+        "AuthenticationType": "API_KEY",
+        "LogConfig": {
+          "CloudWatchLogsRoleArn": {
+            "Fn::GetAtt": [
+              "AppSyncLoggingRole",
+              "Arn"
+            ]
+          },
+          "FieldLogLevel": "ALL"
+        }
+      }
+    },
+    "AppSyncSchema": {
+      "Type": "AWS::AppSync::GraphQLSchema",
+      "Properties": {
+        "Definition": "type Query {\n\tvoucher(voucherId: String): Voucher\n\t# test(input: 'String'): String\n}\n\ntype Voucher {\n\tvoucherId: String\n\tamount: Int\n\tvendorId: String\n\tvendor: Vendor \n\tcreatedAt: String\n}\ntype Vendor {\n\tname: String\n  vendorId: String\n}\n\nschema {\n\tquery: Query\n}",
+        "ApiId": {
+          "Fn::GetAtt": "AppSyncApi.ApiId"
+        }
+      }
+    },
+    "AppSyncLoggingRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "appsync.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Sub": "${AWS::StackName}-LoggingRolePolicy"
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "AppSyncLambdaServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "appsync.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Sub": "${AWS::StackName}-LambdaServiceRolePolicy"
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ROOTvoucherResolver": {
+      "Type": "AWS::AppSync::Resolver",
+      "Description": "root level resolver for voucher field",
+      "Properties": {
+        "TypeName": "Query",
+        "DataSourceName": "ROOTvoucherDataSource",
+        "RequestMappingTemplate": "{\n  \"version\" : \"2017-02-28\",\n  \"operation\" : \"Invoke\",\n  \"payload\": $util.toJson($context)\n}",
+        "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+        "ApiId": {
+          "Fn::GetAtt": "AppSyncApi.ApiId"
+        },
+        "FieldName": "voucher"
+      }
+    },
+    "ROOTvoucherDataSource": {
+      "Type": "AWS::AppSync::DataSource",
+      "Properties": {
+        "Type": "AWS_LAMBDA",
+        "ServiceRoleArn": {
+          "Fn::GetAtt": [
+            "AppSyncLambdaServiceRole",
+            "Arn"
+          ]
+        },
+        "ApiId": {
+          "Fn::GetAtt": [
+            "AppSyncApi",
+            "ApiId"
+          ]
+        },
+        "Name": "ROOTvoucherDataSource",
+        "LambdaConfig": {
+          "LambdaFunctionArn": {
+            "Fn::ImportValue": "voucher-resolver-arn"
+          }
+        }
+      }
+    },
+    "NESTEDvendorResolver": {
+      "Type": "AWS::AppSync::Resolver",
+      "Description": "nested resolver for resolving vendor WITHIN voucher",
+      "Properties": {
+        "TypeName": "Voucher",
+        "DataSourceName": "NESTEDvendorDataSource",
+        "RequestMappingTemplate": "{\n    \"version\": \"2017-02-28\",\n    \"operation\": \"Invoke\",\n    \"payload\": {\n        \"field\": \"vendor\",\n        \"source\":  $utils.toJson($context.source)\n    }\n}",
+        "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+        "ApiId": {
+          "Fn::GetAtt": "AppSyncApi.ApiId"
+        },
+        "FieldName": "vendor"
+      }
+    },
+    "NESTEDvendorDataSource": {
+      "Type": "AWS::AppSync::DataSource",
+      "Properties": {
+        "Type": "AWS_LAMBDA",
+        "ServiceRoleArn": {
+          "Fn::GetAtt": [
+            "AppSyncLambdaServiceRole",
+            "Arn"
+          ]
+        },
+        "ApiId": {
+          "Fn::GetAtt": [
+            "AppSyncApi",
+            "ApiId"
+          ]
+        },
+        "Name": "NESTEDvendorDataSource",
+        "LambdaConfig": {
+          "LambdaFunctionArn": {
+            "Fn::ImportValue": "vendor-resolver-arn"
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      }
+    },
+    "AppSyncUrl": {
+      "Description": "The URL of the AppSync GraphQL API",
+      "Value": {
+        "Fn::GetAtt": [
+          "AppSyncApi",
+          "GraphQLUrl"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:AppSyncUrl"
+        }
+      }
+    },
+    "AppSyncId": {
+      "Description": "The ID of the AppSync GraphQL API",
+      "Value": {
+        "Fn::GetAtt": [
+          "AppSyncApi",
+          "ApiId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:AppSyncId"
+        }
+      }
+    }
+  }
+}

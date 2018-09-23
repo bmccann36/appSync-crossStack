@@ -1,0 +1,20 @@
+
+
+type Query {
+	voucher(voucherId: String): Voucher
+}
+
+type Voucher {
+	voucherId: String
+	amount: Int
+	vendor: Vendor 
+	createdAt: String
+}
+type Vendor {
+	name: String
+  vendorId: String
+}
+
+schema {
+	query: Query
+}

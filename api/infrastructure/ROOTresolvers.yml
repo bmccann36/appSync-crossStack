@@ -1,0 +1,25 @@
+Resources:
+
+# resolves 'voucher field'
+  ROOTvoucherResolver:
+    Type: 'AWS::AppSync::Resolver'
+    Description: 'root level resolver for voucher field'
+    Properties:
+      TypeName: Query
+      DataSourceName: ROOTvoucherDataSource
+      RequestMappingTemplate: ${file(./mappingTemplates/req-mapping-template.txt)}
+      ResponseMappingTemplate: ${file(./mappingTemplates/res-mapping-template.txt)}
+      ApiId: { Fn::GetAtt: 'AppSyncApi.ApiId' }
+      FieldName: "voucher"
+
+# data source for the above ROOTvoucherResolver
+  ROOTvoucherDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      Type: AWS_LAMBDA
+      ServiceRoleArn: { Fn::GetAtt: [ AppSyncLambdaServiceRole, Arn ] }
+      ApiId: { Fn::GetAtt: [ AppSyncApi, ApiId ] }
+      Name: ROOTvoucherDataSource
+      LambdaConfig:
+        LambdaFunctionArn: 
+          Fn::ImportValue: 'voucher-resolver-arn'
